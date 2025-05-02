@@ -42,10 +42,8 @@ void   UpdateTemperature(Cell_Data_t *cell, float delta_time);
 int main() {
     float delta_time = 1.0f;
     Cell_Data_t cell = Init_Cell(delta_time);
-    //cell.Temperature = -10.0f; //온도 테스트 중
-
     //[SOC; voltage_delay]
-    float xk[2] = { cell.SOC_Initial, cell.voltage_delay_Initial };
+    float estimate_soc_voltagedelay[2] = { cell.SOC_Initial, cell.voltage_delay_Initial };
     for (int k = 0; ; ++k) {
         UpdateTemperature(&cell, delta_time); //온도 갱신 (냉각/히팅)
         UpdateResistance(&cell); //온도 기반 저항 변동
@@ -58,18 +56,15 @@ int main() {
         cell.ChargeCurrent = ChargeCurrentLimits(&cell, SOC_estimate);
         cell.noiseincurrent   = cell.ChargeCurrent;
         // SOC, voltage_delay 갱신
-        xk[0] = SOC_estimate;
-        xk[1] = voltage_delay_est;
+        estimate_soc_voltagedelay[0] = SOC_estimate;
+        estimate_soc_voltagedelay[1] = voltage_delay_est;
         printf("Time %5d: 온도 = %5.2f°C, 추정 SOC = %6.3f%%, 추정 voltage_delay = %8.5fV, 실측 터미널 전압 = %8.5f V\n",
-               k, cell.Temperature, SOC_estimate, voltage_delay_est, cell.voltage_terminal);
+                k, cell.Temperature, SOC_estimate, voltage_delay_est, cell.voltage_terminal);
         if ((k + 1) % 100 == 0) {
             printf("\n 시간 %d s — 계속 Enter, 종료 q 입력: ", k + 1);
             fflush(stdout);
-
             char buf[8] = {0};
-            if (fgets(buf, sizeof(buf), stdin) && (buf[0] == 'q' || buf[0] == 'Q')) {
-                break;
-            }
+            if (fgets(buf, sizeof(buf), stdin) && (buf[0] == 'q' || buf[0] == 'Q')) break;
         }
     }
     return 0;
@@ -288,7 +283,7 @@ void SOCEKF(const Cell_Data_t *cell, float delta_time, float *estimate_soc_resul
         }
     }
     float I_KH[2][2] = {{1.0f - kalman_gain_h[0][0],    -kalman_gain_h[0][1]},
-                       {   -kalman_gain_h[1][0], 1.0f - kalman_gain_h[1][1]}};
+                        {-kalman_gain_h[1][0], 1.0f - kalman_gain_h[1][1]}};
     float update_error[2][2];
     for (int i = 0; i < 2; ++i) {
         for (int j = 0; j < 2; ++j) {
