@@ -322,8 +322,8 @@ void UpdateTemperature(Cell_Data_t *cell, float delta_time) //발열/냉각 기�
     // 총 열 플럭스 (J/s)
     float total_heat = internal_heat + heater_power - cooling_power;
     // 온도 변화 계산
-    float delta_time = delta_time / C_capacity * (total_heat - (cell->Temperature - ambient_temp_C) / C_resistance);
-    cell->Temperature += delta_time;
+    float local_delta_time = delta_time / C_capacity * (total_heat - (cell->Temperature - ambient_temp_C) / C_resistance);
+    cell->Temperature += local_delta_time;
 }
 
 float SimulateTerminalVoltage(Cell_Data_t *cell, float delta_time) //바뀐 저항을 이용해 셀 전압 계산
