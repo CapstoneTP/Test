@@ -302,7 +302,7 @@ void UpdateTemperature(Cell_Data_t *cell, float delta_time) //발열/냉각 기�
 {
     const float C_capacity = 200.0f; // 열용량
     const float C_resistance = 3.0f; // 열저항
-    const float ambient_temp_C = 0.0f; // 외기 온도
+    const float airtemp_C = 0.0f; // 외기 온도
 
     // 히터 및 쿨러 파라미터
     const float heater_power_w = 5.0f; // 히터 동작 시 열 공급량 -> 올리면 히터 기능 상승
@@ -317,7 +317,7 @@ void UpdateTemperature(Cell_Data_t *cell, float delta_time) //발열/냉각 기�
     // 총 열 플럭스 (J/s)
     float total_heat = internal_heat + heater_power - cooling_power;
     // 온도 변화 계산
-    float local_delta_time = delta_time / C_capacity * (total_heat - (cell->Temperature - ambient_temp_C) / C_resistance);
+    float local_delta_time = delta_time / C_capacity * (total_heat - (cell->Temperature - airtemp_C) / C_resistance);
     cell->Temperature += local_delta_time;
 }
 
