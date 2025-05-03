@@ -109,10 +109,10 @@ void UpdateResistance(Cell_Data_t *cell) { //온도를 기준으로 저항 조�
     const float R1_reference = 0.01145801322f;
     const float temperature_coeff_R0  = 0.003f;   // R0 -> 1도 당 0.3 증가
     const float temperature_coeff_R1   = 0.003f;   // R1 -> ''
-    float delta_time = cell->Temperature - 25.0f; // 현재 온도 - 기준 온도
+    float difference_temp = cell->Temperature - 25.0f; // 현재 온도 - 기준 온도
     //선형 보정 공식 적용
-    cell->R0 = R0_reference * (1.0f + temperature_coeff_R0 * delta_time);
-    cell->R1 = R1_reference * (1.0f + temperature_coeff_R1  * delta_time);
+    cell->R0 = R0_reference * (1.0f + temperature_coeff_R0 * difference_temp);
+    cell->R1 = R1_reference * (1.0f + temperature_coeff_R1  * difference_temp);
 }
 
 //온도에 따라 전류 제한
