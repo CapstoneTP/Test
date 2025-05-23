@@ -17,10 +17,10 @@ int main(void){
     int l = 0;
     Init_Battery(); //Battery initialize
     while(1){
-        if (l >= 1000) {
-            cooling_broken = 1;  // simulate cooling failure from time 3000
-            heating_broken = 1;  // simulate heating failure from time 3000
-        }
+        // if (l >= 1000) {
+        //     cooling_broken = 1;  // simulate cooling failure from time 3000
+        //     heating_broken = 1;  // simulate heating failure from time 3000
+        // }
         Update_Temperature(); //Temperature update
         Update_Resistance(); //Change resistance from temperature
         SimulateTerminalVoltage(); 
@@ -29,25 +29,23 @@ int main(void){
         printf("--<Time %d>--\n",l);
         printf("[Battery] Temperature : %lf || Voltage : %lf || SOC : %lf\n",battery[0].Temperature, battery[0].Voltage_terminal,battery[0].SOC);
         if (l == 0) {
-            FILE *fp = fopen("cooler_down_log.csv", "w");
+            FILE *fp = fopen("heat_normal90_log.csv", "w");
             fprintf(fp, "Time,Temperature,Voltage_terminal,SOC,V1,Charge_Current,Capacity,R0,R1,C1\n");
             fclose(fp);
         }
-        if(l % 10 == 0){
-            FILE *fp = fopen("cooler_down_log.csv", "a");
-            fprintf(fp, "%d,%.6lf,%.6lf,%.6lf,%.6lf,%.6lf,%.6lf,%.8lf,%.8lf,%.6lf\n",
-                    l,
-                    battery[0].Temperature,
-                    battery[0].Voltage_terminal,
-                    battery[0].SOC,
-                    battery[0].V1,
-                    battery[0].Charge_Current,
-                    battery[0].Capacity,
-                    battery[0].R0,
-                    battery[0].R1,
-                    battery[0].C1);
-            fclose(fp);
-        }
+        FILE *fp = fopen("heat_normal90_log.csv", "a");
+        fprintf(fp, "%d,%.6lf,%.6lf,%.6lf,%.6lf,%.6lf,%.6lf,%.8lf,%.8lf,%.6lf\n",
+                l,
+                battery[0].Temperature,
+                battery[0].Voltage_terminal,
+                battery[0].SOC,
+                battery[0].V1,
+                battery[0].Charge_Current,
+                battery[0].Capacity,
+                battery[0].R0,
+                battery[0].R1,
+                battery[0].C1);
+        fclose(fp);
         printf("[Delay] : %lf\n",battery[0].V1);
         printf("[Estimate] Voltage : %lf || SOC : %lf\n\n", estimate[0].Voltage_terminal, estimate[0].SOC);
         l+=1;
@@ -59,7 +57,7 @@ int main(void){
 void Init_Battery(){
     double local_Capacity1c = 0;
     for(int i=0; i<BATTERY_CELLS; i++){
-        battery[i].SOC = SOC_from_OCV(CHG_OCV[0]);
+        battery[i].SOC = SOC_from_OCV(CHG_OCV[891]); //0[0] 99[10] 198[20] 297[30] 396[40] 495[50] 594[60] 693[70] 792[80] 891[90]
         battery[i].V1 = 0;
         battery[i].Charge_Current = -0.41;
         battery[i].Capacity = 4.07611;

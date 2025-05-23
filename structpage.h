@@ -1,3 +1,6 @@
+#ifndef STRUCTPAGE_H
+#define STRUCTPAGE_H
+
 #include "all_headers.h"
 
 typedef struct {
@@ -28,3 +31,5 @@ typedef struct {
 Battery_t battery[BATTERY_CELLS];
 Estimate_t estimate[BATTERY_CELLS];
 State_t battery_state[BATTERY_CELLS];
+
+#endif
