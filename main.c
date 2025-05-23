@@ -1,5 +1,8 @@
 #include "all_headers.h"
-
+static int cooling_broken = 0;  // 0: working, 1: broken
+static int heating_broken = 0;  // 0: working, 1: broken
+//출력 값 정확한지 테스트 후 그래프 출력 -> LSTM 학습 미리해보기
+//Refactoring code write Work page with in notion
 void Init_Battery();
 void Update_Temperature();
 void Update_Resistance();
@@ -14,6 +17,10 @@ int main(void){
     int l = 0;
     Init_Battery(); //Battery initialize
     while(1){
+        if (l >= 1000) {
+            cooling_broken = 1;  // simulate cooling failure from time 3000
+            heating_broken = 1;  // simulate heating failure from time 3000
+        }
         Update_Temperature(); //Temperature update
         Update_Resistance(); //Change resistance from temperature
         SimulateTerminalVoltage(); 
@@ -21,10 +28,30 @@ int main(void){
         ChargeCurrentLimits();
         printf("--<Time %d>--\n",l);
         printf("[Battery] Temperature : %lf || Voltage : %lf || SOC : %lf\n",battery[0].Temperature, battery[0].Voltage_terminal,battery[0].SOC);
+        if (l == 0) {
+            FILE *fp = fopen("cooler_down_log.csv", "w");
+            fprintf(fp, "Time,Temperature,Voltage_terminal,SOC,V1,Charge_Current,Capacity,R0,R1,C1\n");
+            fclose(fp);
+        }
+        if(l % 10 == 0){
+            FILE *fp = fopen("cooler_down_log.csv", "a");
+            fprintf(fp, "%d,%.6lf,%.6lf,%.6lf,%.6lf,%.6lf,%.6lf,%.8lf,%.8lf,%.6lf\n",
+                    l,
+                    battery[0].Temperature,
+                    battery[0].Voltage_terminal,
+                    battery[0].SOC,
+                    battery[0].V1,
+                    battery[0].Charge_Current,
+                    battery[0].Capacity,
+                    battery[0].R0,
+                    battery[0].R1,
+                    battery[0].C1);
+            fclose(fp);
+        }
         printf("[Delay] : %lf\n",battery[0].V1);
         printf("[Estimate] Voltage : %lf || SOC : %lf\n\n", estimate[0].Voltage_terminal, estimate[0].SOC);
-        l++;
-        if(l == 4600) break;
+        l+=1;
+        if(battery[0].SOC == 100.0) break;
     }
     return 0;
 }
@@ -49,13 +76,15 @@ void Init_Battery(){
 }
 
 void Update_Temperature(){
-    double local_airtemp = 0.0; //Air temperature
+    double local_airtemp = 45.0; //Air temperature
     double internal_heat[BATTERY_CELLS];
     double heater_on, cooler_on, total_heat[BATTERY_CELLS];
     for(int i=0; i<BATTERY_CELLS; i++){
         internal_heat[i] = battery[i].R0 * pow(battery[i].Charge_Current, 2);
-        heater_on = (battery[i].Temperature < HEATER_ON_TEMP)? HEAT_COOL_POWER : 0;
-        cooler_on = (battery[i].Temperature > COOLER_ON_TEMP)? HEAT_COOL_POWER : 0;
+        // disable heating if broken
+        heater_on = (!heating_broken && battery[i].Temperature < HEATER_ON_TEMP) ? HEAT_COOL_POWER : 0;
+        // disable cooling if broken
+        cooler_on = (!cooling_broken && battery[i].Temperature > COOLER_ON_TEMP) ? HEAT_COOL_POWER : 0;
         total_heat[i] = internal_heat[i] + heater_on - cooler_on;
         battery[i].Temperature += DELTA_TIME / 200 * (total_heat[i] - (battery[i].Temperature - local_airtemp) / 3);
     }
@@ -106,14 +135,18 @@ void SOCEKF(){
         }
         //Compute Pp -> F * P * F^T + Q (T meaning -> [0][2] makes -> [2][0] matrix)
         for(int k=0; k<2; ++k) for(int j=0; j<2; ++j){
-            battery_state[i].Pp[k][j] = local_FP[k][j] * battery_state[i].F[j][0] + local_FP[k][1] * battery_state[i].F[j][1] + battery_state[i].Q[k][j];
-        }
+            battery_state[i].Pp[k][j] = local_FP[k][0] * battery_state[i].F[j][0] + local_FP[k][1] * battery_state[i].F[j][1] + battery_state[i].Q[k][j];
+        }//Update Error -> 05-16 Hi_Hee1 -> local_FP[k][j] *... -> local_FP[k][0];
         //Linearize nonlinearity through gradient
         ComputeJacobianH(i, local_H);
         //Compute local_H * Pp
         local_HP[0] = local_H[0] * battery_state[i].Pp[0][0] + local_H[1] * battery_state[i].Pp[1][0];
         local_HP[1] = local_H[0] * battery_state[i].Pp[0][1] + local_H[1] * battery_state[i].Pp[1][1];
-        //Residual
+        
+        //Where is kalman_gain
+        //Residual -> Check EKFvoltage_terminal_predict
+        if(estimate[i].SOC <= 0.0) estimate[i].SOC = 0.0;
+        else if(estimate[i].SOC >= 100.0) estimate[i].SOC = 100.0;
         estimate[i].Voltage_terminal = OCV_from_SOC(estimate[i].SOC) - battery[i].V1 - battery[i].R0 * battery[i].Charge_Current;
         local_y = battery[i].Voltage_terminal - estimate[i].Voltage_terminal; //local_y is residual
         // EKF update step
@@ -124,6 +157,8 @@ void SOCEKF(){
 
         estimate[i].SOC += K[0] * local_y;
         estimate[i].V1  += K[1] * local_y;
+
+        //missing kalman gain...
 
         for (int k = 0; k < 2; k++) for (int j = 0; j < 2; j++) local_I_KH[k][j] = (k == j ? 1 : 0) - K[k] * local_H[j];
         //Update P
